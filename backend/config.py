@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     TAVILY_API_KEY: str
     SUPABASE_URL: str
     SUPABASE_KEY: str
+    HUGGINGFACE_API_KEY: str
     CLAUDE_MODEL: str = "claude-sonnet-4-6"
 
     model_config = {"env_file": ".env"}
