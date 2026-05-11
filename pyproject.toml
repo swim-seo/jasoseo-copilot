@@ -1,0 +1,37 @@
+[project]
+name = "jasoseo-copilot"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+    "anthropic>=0.40.0",
+    "tavily-python>=0.5.0",
+    "supabase>=2.10.0",
+    "sentence-transformers>=3.3.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+    "poethepoet>=0.29.0",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.poe.tasks]
+dev = "uvicorn backend.main:app --reload --port 8000"
+ingest = "python scripts/ingest_scripts.py"
+lint = "ruff check . && ruff format --check ."
+format = "ruff check --fix . && ruff format ."
+test = "pytest -v"

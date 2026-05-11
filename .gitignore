@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+dist/
+.pytest_cache/
+chroma_db/
+data/youtube_scripts/*.txt
+!data/youtube_scripts/.gitkeep
