@@ -148,6 +148,26 @@ uv run python scripts/youtube_collector.py \
 uv run python scripts/ingest_scripts.py
 ```
 
+### 수집 결과 확인 (PowerShell)
+
+```powershell
+# 수집된 파일 목록
+ls C:\Users\hp\jasoseo-copilot\data\youtube_scripts\*.txt | Select-Object Name, Length
+
+# 총 파일 개수
+(ls C:\Users\hp\jasoseo-copilot\data\youtube_scripts\*.txt).Count
+
+# 내용이 너무 짧은 파일 찾기 (200바이트 미만 = 자막 파싱 실패)
+ls C:\Users\hp\jasoseo-copilot\data\youtube_scripts\*.txt | Where-Object { $_.Length -lt 200 }
+```
+
+정상 수집된 파일은 `제목_videoID.txt` 형식이며, 파일 첫 두 줄:
+```
+출처: https://www.youtube.com/watch?v=VIDEO_ID
+제목: 영상 제목
+```
+1,000바이트 이상이면 정상, 200바이트 미만이면 자막이 없거나 파싱 실패입니다.
+
 ---
 
 ## API 엔드포인트

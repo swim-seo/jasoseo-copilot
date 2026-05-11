@@ -25,10 +25,33 @@ SYSTEM_PROMPT = """당신은 대기업 자소서 전문 코치입니다. 취업�
 - 사회 이슈: 논란 주제 금지, 직무 관련 무난한 이슈
 - 존경 인물: 유명인 X → 실질적 영향을 준 사람 + 스토리
 
+## 방법론 일관성
+- 검색된 컨설팅 사례가 여러 프레임워크(취업사이다 STAR / 면접왕 3C4P / 강민혁 3단법칙)를 포함할 수 있습니다.
+- 여러 프레임워크가 검색되면 하나의 primary framework만 사용하고 명칭을 섞지 마십시오.
+
 ## 문체
 - 합쇼체 (습니다/입니다) 사용
 - 문장 길이를 의도적으로 다양하게 (AI 패턴 회피)
 - 25세 한국 취업준비생이 직접 쓴 것처럼 자연스럽게"""
+
+
+QUESTION_TYPE_KEYWORDS = {
+    "motivation": ["지원동기", "지원 동기", "지원이유", "관심", "포부"],
+    "growth": ["성장과정", "성장 과정", "성장배경", "어린 시절"],
+    "competency": ["직무역량", "직무 역량", "강점", "역량", "전문성"],
+    "conflict": ["갈등", "팀워크", "협업", "팀 경험"],
+    "social_issue": ["사회이슈", "사회 이슈", "시사", "견해"],
+    "weakness": ["단점", "약점", "실패", "어려움"],
+}
+
+
+def _classify_question_type(question: str) -> str | None:
+    """자소서 항목 텍스트에서 question_type 자동 추론. 매칭 없으면 None."""
+    q = question.replace(" ", "")
+    for qtype, keywords in QUESTION_TYPE_KEYWORDS.items():
+        if any(k.replace(" ", "") in q for k in keywords):
+            return qtype
+    return None
 
 
 def _build_user_prompt(
@@ -38,7 +61,7 @@ def _build_user_prompt(
     company_data: dict[str, str],
     job_posting: str,
     experiences: list[dict],
-    methodology_chunks: list[str],
+    methodology_chunks: list[dict],
     extra_context: str,
     char_limit: int = 700,
 ) -> str:
@@ -46,11 +69,13 @@ def _build_user_prompt(
     exp_text = "\n".join(
         f"- {e.get('title', '')}: {e.get('description', '')}" for e in experiences
     )
-    methodology_text = (
-        "\n\n---\n\n".join(methodology_chunks)
-        if methodology_chunks
-        else "기본 STAR 원칙 적용"
-    )
+    if methodology_chunks:
+        methodology_text = "\n\n---\n\n".join(
+            f"[{c.get('source_channel', 'unknown')} / {c.get('methodology', '')}]\n{c['content']}"
+            for c in methodology_chunks
+        )
+    else:
+        methodology_text = "기본 STAR 원칙 적용"
     extra = f"\n\n## 추가 자료 (사용자 제공)\n{extra_context}" if extra_context else ""
 
     return f"""아래 정보를 바탕으로 자소서를 작성해 주세요.
@@ -69,7 +94,7 @@ def _build_user_prompt(
 ## 내 경험
 {exp_text}
 
-## 전문가 방법론 (취업사이다 컨설팅 사례 기반)
+## 전문가 방법론 (유튜브 컨설팅 사례)
 {methodology_text}
 
 ---
@@ -96,12 +121,19 @@ def generate(
     extra_context: str = "",
     job_posting_override: str = "",
     char_limit: int = 700,
+    methodology_preference: str = "auto",
 ) -> str:
     company_data = research_company(company, job_role)
     job_posting = job_posting_override or research_job_posting(company, job_role)
 
+    question_type = _classify_question_type(question)
+    methodology_filter = None if methodology_preference == "auto" else methodology_preference
+
     methodology_chunks = retrieve_methodology(
-        f"{question} 자소서 {job_role} 작성 방법 소재 선택", top_k=6
+        f"{question} 자소서 {job_role} 작성 방법 소재 선택",
+        top_k=6,
+        methodology=methodology_filter,
+        question_type=question_type,
     )
 
     user_prompt = _build_user_prompt(

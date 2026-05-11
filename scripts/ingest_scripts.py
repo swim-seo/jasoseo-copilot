@@ -1,9 +1,8 @@
-"""
-취업사이다 YouTube 스크립트를 청킹하여 Supabase에 저장합니다.
+"""YouTube 스크립트를 청킹하여 Supabase에 저장합니다.
 사용법: uv run python scripts/ingest_scripts.py
 
 data/youtube_scripts/ 폴더의 모든 .txt 파일을 처리합니다.
-새 스크립트를 추가할 때마다 이 스크립트를 다시 실행하세요.
+파일 헤더에서 채널을 자동 추론하여 메타데이터 태깅합니다.
 """
 
 import hashlib
@@ -13,6 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from backend.modules.channel_registry import profile_for_source
 from backend.modules.methodology_rag import upsert_chunks
 
 SCRIPTS_DIR = Path("data/youtube_scripts")
@@ -21,50 +21,46 @@ CHUNK_OVERLAP = 80
 
 
 def _remove_timestamps(text: str) -> str:
-    """타임스탬프 제거 (예: 0:00, 1:23, 12:34)"""
     return re.sub(r"^\d+:\d+\s*", "", text, flags=re.MULTILINE)
 
 
 def _normalize_text(text: str) -> str:
     text = _remove_timestamps(text)
-    # 빈 줄 정리
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
 def _chunk_by_topic(text: str) -> list[str]:
-    """단락 기반 청킹 (한국어 구어체 특성 반영)"""
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-
     chunks: list[str] = []
     current = ""
-
     for para in paragraphs:
         if len(current) + len(para) + 2 <= CHUNK_SIZE:
             current = (current + "\n\n" + para).strip() if current else para
         else:
             if current:
                 chunks.append(current)
-            # 오버랩: 이전 청크의 마지막 일부 유지
             overlap = current[-CHUNK_OVERLAP:] if len(current) > CHUNK_OVERLAP else current
             current = (overlap + "\n\n" + para).strip() if overlap else para
-
     if current:
         chunks.append(current)
-
     return chunks
 
 
-def ingest_file(filepath: Path) -> int:
+def ingest_file(filepath: Path, metadata: dict[str, str] | None = None) -> int:
     raw = filepath.read_text(encoding="utf-8")
     text = _normalize_text(raw)
     chunks = _chunk_by_topic(text)
+
+    # 메타데이터 미지정시 파일 헤더(출처 URL)에서 채널 추론
+    profile = metadata or profile_for_source(raw[:500] + " " + filepath.name)
 
     rows = [
         {
             "id": hashlib.md5(f"{filepath.stem}_{i}".encode()).hexdigest(),
             "content": chunk,
             "source": filepath.name,
+            **profile,
         }
         for i, chunk in enumerate(chunks)
     ]

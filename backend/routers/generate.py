@@ -19,6 +19,16 @@ class Experience(BaseModel):
     description: str = Field(description="경험 상세 내용 (STAR 형식 권장)")
 
 
+METHODOLOGY_OPTIONS = [
+    "auto",
+    "careersaida_star",
+    "leehyung_3C4P",
+    "kang_3step",
+    "experience_reframe",
+    "mock_feedback",
+]
+
+
 class GenerateRequest(BaseModel):
     company: str
     job_role: str
@@ -27,6 +37,10 @@ class GenerateRequest(BaseModel):
     char_limit: int = Field(default=700, description="자소서 글자 수 제한")
     job_posting: str = Field(default="", description="채용 공고 텍스트 (선택, 직접 붙여넣기)")
     extra_context: str = Field(default="", description="추가 기업 자료 (뉴스, IR 등 직접 붙여넣기)")
+    methodology_preference: str = Field(
+        default="auto",
+        description=f"방법론 선호: {METHODOLOGY_OPTIONS}",
+    )
 
 
 class GenerateResponse(BaseModel):
@@ -41,6 +55,11 @@ def get_common_questions() -> list[str]:
     return COMMON_QUESTIONS
 
 
+@router.get("/methodologies")
+def get_methodology_options() -> list[str]:
+    return METHODOLOGY_OPTIONS
+
+
 @router.post("/cover-letter", response_model=GenerateResponse)
 def create_cover_letter(req: GenerateRequest) -> GenerateResponse:
     result = generate(
@@ -51,6 +70,7 @@ def create_cover_letter(req: GenerateRequest) -> GenerateResponse:
         extra_context=req.extra_context,
         job_posting_override=req.job_posting,
         char_limit=req.char_limit,
+        methodology_preference=req.methodology_preference,
     )
     return GenerateResponse(
         result=result,
