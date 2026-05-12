@@ -43,7 +43,7 @@
 | **다중 페르소나 병렬 검토** | 취업사이다 / 면접왕 이형 / 강민혁 페르소나가 동시에 초안 채점·약점 진단 |
 | **자료 보강 코치** | 시각자료·전문 용어·정량 수치·데모 링크가 빠지면 페르소나가 지적 |
 | **자동 합성** | 충돌하는 의견은 사용자의 [핵심 캐릭터]에 맞춰 선택, 한 사람의 글처럼 합성 |
-| **JD 매칭 갭 분석** | 채용 공고 붙여넣기 → 요건 추출 → 내 경험과 매칭도 분석 → 경력기술서 자동 생성 |
+| **JD 매칭 갭 분석** | 채용 공고 붙여넣기 → 요건 추출 → 서류 통과 예상 확률 + 자격요건/우대사항 항목별 분석 → 경력기술서 자동 생성 → **페르소나 3명이 경력기술서 피드백** |
 | **고정 프로필** | PDF 이력서 또는 자유텍스트로 한 번 등록 → 자소서마다 자동 사용 |
 | **사용자 작성 지침 통합** | LLM 개발자 전환 전략·핵심 캐릭터·금지 표현·문장 정제 도구가 모든 생성에 자동 적용 |
 | **STAR 자동 추출** | Claude가 자유 텍스트·PDF에서 경험을 Situation/Task/Action/Result 구조로 분리 |
@@ -61,7 +61,7 @@
 │   /          랜딩 / 진입점 4개                                │
 │   /write     새 자소서: 입력 폼 → 초안 생성                    │
 │   /review    초안 검토: 병렬 피드백 + 통합 합성 (핵심 화면)     │
-│   /gap       JD 매칭: 요건 추출 → 갭 분석 → 경력기술서 생성    │
+│   /gap       JD 매칭: 요건 추출 → 갭 분석 → 경력기술서 → 페르소나 피드백 │
 │   /profile   고정 프로필 + STAR 경험 CRUD + PDF import       │
 │   /history   회사·항목별 자소서 버전 히스토리                  │
 └──────────────────────────────────────────────────────────────┘
@@ -324,6 +324,16 @@ multipart form: `file` (PDF 선택) + `text` (자유텍스트). Claude가 다음
 
 응답: `final_text`, `applied_changes[]`, `enrichment_todo[]`, `synthesis_summary`.
 
+### `/gap` 페이지 — 5단계 분석 플로우
+
+| 단계 | 화면 요소 |
+|------|-----------|
+| ① 입력 | JD 붙여넣기 + 내 경험 (선택) |
+| ② JD 분석 | 필수/우대 기술 배지, 핵심 업무 확인 |
+| ③ 갭 분석 | 서류 통과 예상 확률 % · 자격요건 N/N 충족 · 우대사항 N/N 충족 · 항목별 ✅/⚠️/❌ · 매칭 vs 누락 키워드 · 직무 적합도 총평 |
+| ④ 경력기술서 | 프로젝트별 CAR 구조 경력 · [수치 확인 필요] 플레이스홀더 · 보완 필요 항목 |
+| ⑤ 페르소나 피드백 | 취업사이다/면접왕이형/강민혁이 경력기술서 채점 · 원문 인용 약점 지적 · 구체적 수정 제안 · 보강 제안 |
+
 ### `POST /api/analyze/gap` — JD 갭 분석 + 경력기술서 (3단계 통합)
 
 ```json
@@ -335,10 +345,21 @@ multipart form: `file` (PDF 선택) + `text` (자유텍스트). Claude가 다음
 
 응답:
 - `jd_requirements` — 직무명, 필수/우대 기술, 경력 요건, ATS 키워드
-- `gap_analysis` — 매칭 점수(0~100), matched/partial/missing 항목, critical_gaps
+- `gap_analysis` — 매칭 점수(0~100), matched/partial/missing 항목, score_breakdown(필수/우대 항목별 리스트), critical_gaps
 - `career_description` — 프로젝트별 경력 (배경→역할→실행→성과), [수치 확인 필요] 플레이스홀더, 보유 역량
 
-단계별 실행이 필요하면 `/api/analyze/gap/extract-jd` → `/api/analyze/gap/analyze` → `/api/analyze/gap/career-description` 순으로 개별 호출 가능.
+단계별 실행: `/api/analyze/gap/extract-jd` → `/api/analyze/gap/analyze` → `/api/analyze/gap/career-description`  
+경력기술서 생성 후 페르소나 피드백은 기존 `POST /api/generate/multi-feedback`에 `full_text`를 draft로 넘겨 호출.
+
+#### score_breakdown 상세
+
+| 필드 | 설명 |
+|------|------|
+| `required_total / matched / partial / missing` | 필수 요건 집계 |
+| `preferred_total / matched / partial / missing` | 우대 요건 집계 |
+| `req_matched_list / partial_list / missing_list` | 필수 항목별 리스트 |
+| `pref_matched_list / partial_list / missing_list` | 우대 항목별 리스트 |
+| `score_reason` | 점수 산출 근거 텍스트 |
 
 ---
 
