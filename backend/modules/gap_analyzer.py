@@ -24,9 +24,18 @@ def _get_client() -> anthropic.Anthropic:
 
 def _parse_json(text: str) -> dict | list:
     text = text.strip()
+    # 완전한 코드블록 (```json ... ```)
     m = re.search(r"```(?:json)?\s*(\{.*\}|\[.*\])\s*```", text, re.DOTALL)
     if m:
-        text = m.group(1)
+        return json.loads(m.group(1))
+    # 닫는 ``` 없이 잘린 코드블록 → { 또는 [ 시작 위치부터 추출
+    m = re.search(r"```(?:json)?\s*", text)
+    if m:
+        text = text[m.end():]
+    # { 또는 [ 시작점 찾기
+    start = next((i for i, c in enumerate(text) if c in "{["), None)
+    if start is not None:
+        text = text[start:]
     return json.loads(text)
 
 
@@ -255,7 +264,7 @@ def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str)
 
     resp = _get_client().messages.create(
         model=settings.CLAUDE_MODEL,
-        max_tokens=4000,
+        max_tokens=8000,
         system=GAP_SYSTEM,
         messages=[{"role": "user", "content": GAP_PROMPT.format(
             requirements=safe_req,
