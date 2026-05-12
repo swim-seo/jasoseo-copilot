@@ -78,11 +78,14 @@ def extract_jd_requirements(jd: str) -> dict:
 
 GAP_SYSTEM = prepend_guide("""당신은 채용 관점에서 지원자의 경험과 JD 요건의 갭을 분석하는 전문가입니다.
 
-규칙:
-- 사용자가 언급하지 않은 내용을 matched에 넣지 마십시오. 근거 없는 매칭은 금지.
-- partial: 어느 정도 가지고 있지만 증거가 약한 항목
-- missing: 전혀 언급되지 않거나 증거가 없는 항목
-- priority: 채용 의사결정에 미치는 영향 기준으로 정렬
+엄격한 분류 규칙:
+- matched.evidence는 반드시 user_experience 또는 profile의 실제 문장을 그대로 인용해야 합니다 (paraphrase 금지).
+  인용할 수 없으면 matched가 아닌 missing에 분류하십시오.
+- user_experience가 비어있으면 matched는 반드시 [] 이어야 합니다.
+- profile의 [강점] 항목은 자기신고이므로 matched가 아닌 partial로만 분류하십시오.
+- partial: 어느 정도 증거가 있지만 구체적 수치·사례가 부족한 항목
+- missing: 증거가 전혀 없는 항목
+- match_score 필드는 시스템이 계산합니다. 반드시 0을 넣으세요.
 JSON 외 다른 텍스트 없이 응답하세요.""")
 
 GAP_PROMPT = """아래 JD 요건과 사용자 경험을 비교해 갭을 분석하세요.
@@ -102,15 +105,15 @@ GAP_PROMPT = """아래 JD 요건과 사용자 경험을 비교해 갭을 분석�
 {profile_block}
 </profile>
 
-응답 형식:
+응답 형식 (match_score는 반드시 0):
 {{
-  "match_score": 0~100 정수,
+  "match_score": 0,
   "match_summary": "한 줄 총평",
   "matched": [
-    {{"item": "요건명", "evidence": "사용자 경험에서 근거 인용", "strength": "strong|moderate"}}
+    {{"item": "요건명", "evidence": "원문 그대로 인용 (paraphrase 금지)", "strength": "strong|moderate"}}
   ],
   "partial": [
-    {{"item": "요건명", "evidence": "약한 근거 인용", "gap": "어떤 부분이 부족한지", "suggestion": "어떻게 보강할지"}}
+    {{"item": "요건명", "evidence": "약한 근거 원문 인용", "gap": "어떤 부분이 부족한지", "suggestion": "어떻게 보강할지"}}
   ],
   "missing": [
     {{"item": "요건명", "priority": "high|medium|low", "suggestion": "이 갭을 채울 방법 또는 우회 서술 방법"}}
@@ -121,7 +124,48 @@ GAP_PROMPT = """아래 JD 요건과 사용자 경험을 비교해 갭을 분석�
 }}"""
 
 
+def _compute_score(gap: dict, jd_requirements: dict) -> int:
+    """match_score를 결정론적으로 계산. required=2점, preferred=1점, partial=절반."""
+    required = set(jd_requirements.get("required_skills", []))
+    preferred = set(jd_requirements.get("preferred_skills", []))
+    all_req = required | preferred
+    if not all_req:
+        return 0
+
+    total_weight = len(required) * 2 + len(preferred) * 1
+    if total_weight == 0:
+        return 0
+
+    matched_items = {m["item"] for m in gap.get("matched", [])}
+    partial_items = {p["item"] for p in gap.get("partial", [])}
+
+    score = 0
+    for item in matched_items:
+        score += 2 if item in required else 1
+    for item in partial_items:
+        score += 1 if item in required else 0.5
+
+    return min(100, round(score / total_weight * 100))
+
+
 def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str) -> dict:
+    # 경험도 프로필도 없으면 즉시 0점 반환
+    if not user_experience.strip() and not profile_block.strip():
+        all_items = (
+            jd_requirements.get("required_skills", [])
+            + jd_requirements.get("preferred_skills", [])
+        )
+        return {
+            "match_score": 0,
+            "match_summary": "입력된 경험 정보가 없습니다. 경험을 입력하거나 프로필을 먼저 등록해주세요.",
+            "matched": [],
+            "partial": [],
+            "missing": [{"item": i, "priority": "high", "suggestion": ""} for i in all_items],
+            "keyword_gaps": all_items,
+            "strengths_to_highlight": [],
+            "critical_gaps": all_items,
+        }
+
     safe_exp = user_experience[:12000]
     safe_req = json.dumps(jd_requirements, ensure_ascii=False)[:4000]
 
@@ -136,7 +180,10 @@ def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str)
         )}],
     )
     try:
-        return _parse_json(resp.content[0].text)
+        result = _parse_json(resp.content[0].text)
+        # Claude가 생성한 match_score 무시, 결정론적으로 덮어쓰기
+        result["match_score"] = _compute_score(result, jd_requirements)
+        return result
     except Exception:
         return {"raw": resp.content[0].text[:500], "error": "갭 분석 파싱 실패"}
 
