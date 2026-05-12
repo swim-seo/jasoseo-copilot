@@ -1,7 +1,12 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from backend.modules.cover_letter_generator import generate
+from backend.modules import cover_letter_store
+from backend.modules.cover_letter_generator import (
+    feedback,
+    generate,
+    interview_questions,
+)
 
 router = APIRouter()
 
@@ -14,67 +19,108 @@ COMMON_QUESTIONS = [
 ]
 
 
-class Experience(BaseModel):
-    title: str = Field(description="경험 제목 (예: 삼성 인턴, 연구실 프로젝트)")
-    description: str = Field(description="경험 상세 내용 (STAR 형식 권장)")
-
-
-METHODOLOGY_OPTIONS = [
-    "auto",
-    "careersaida_star",
-    "leehyung_3C4P",
-    "kang_3step",
-    "experience_reframe",
-    "mock_feedback",
-]
-
-
 class GenerateRequest(BaseModel):
     company: str
     job_role: str
-    question: str = Field(description="자소서 항목 (예: 지원 동기 및 포부)")
-    experiences: list[Experience]
-    char_limit: int = Field(default=700, description="자소서 글자 수 제한")
-    job_posting: str = Field(default="", description="채용 공고 텍스트 (선택, 직접 붙여넣기)")
-    extra_context: str = Field(default="", description="추가 기업 자료 (뉴스, IR 등 직접 붙여넣기)")
-    methodology_preference: str = Field(
-        default="auto",
-        description=f"방법론 선호: {METHODOLOGY_OPTIONS}",
-    )
-
-
-class GenerateResponse(BaseModel):
-    result: str
-    company: str
-    job_role: str
     question: str
+    char_limit: int = 700
+    job_posting: str = ""
+    extra_context: str = ""
+    methodology_preference: str = "auto"
+    experience_ids: list[int] = Field(default_factory=list)
+    save: bool = True
+
+
+class FeedbackRequest(BaseModel):
+    draft: str
+    company: str = ""
+    job_role: str = ""
+    question: str = ""
+    methodology_preference: str = "auto"
+    parent_letter_id: int | None = None
+    save: bool = True
+
+
+class InterviewRequest(BaseModel):
+    cover_letter_text: str
+    company: str = ""
+    job_role: str = ""
+    methodology_preference: str = "auto"
 
 
 @router.get("/questions")
-def get_common_questions() -> list[str]:
+def get_common_questions():
     return COMMON_QUESTIONS
 
 
-@router.get("/methodologies")
-def get_methodology_options() -> list[str]:
-    return METHODOLOGY_OPTIONS
-
-
-@router.post("/cover-letter", response_model=GenerateResponse)
-def create_cover_letter(req: GenerateRequest) -> GenerateResponse:
+@router.post("/cover-letter")
+def create_cover_letter(req: GenerateRequest):
     result = generate(
         company=req.company,
         job_role=req.job_role,
         question=req.question,
-        experiences=[e.model_dump() for e in req.experiences],
         extra_context=req.extra_context,
         job_posting_override=req.job_posting,
         char_limit=req.char_limit,
         methodology_preference=req.methodology_preference,
+        experience_ids=req.experience_ids or None,
     )
-    return GenerateResponse(
-        result=result,
+    saved = None
+    if req.save:
+        saved = cover_letter_store.save_cover_letter(
+            {
+                "company": req.company,
+                "job_role": req.job_role,
+                "question": req.question,
+                "methodology_preference": req.methodology_preference,
+                "char_limit": req.char_limit,
+                "job_posting": req.job_posting,
+                "used_experience_ids": req.experience_ids or None,
+                "extra_context": req.extra_context,
+                "result": result,
+                "version": 1,
+            }
+        )
+    return {"result": result, "saved": saved}
+
+
+@router.post("/feedback")
+def create_feedback(req: FeedbackRequest):
+    result = feedback(
+        draft=req.draft,
         company=req.company,
         job_role=req.job_role,
         question=req.question,
+        methodology_preference=req.methodology_preference,
     )
+    saved = None
+    if req.save:
+        version = 1
+        if req.parent_letter_id:
+            parent = cover_letter_store.get_cover_letter(req.parent_letter_id)
+            if parent:
+                version = (parent.get("version") or 1) + 1
+        saved = cover_letter_store.save_cover_letter(
+            {
+                "company": req.company,
+                "job_role": req.job_role,
+                "question": req.question,
+                "methodology_preference": req.methodology_preference,
+                "parent_id": req.parent_letter_id,
+                "feedback_request": req.draft,
+                "result": result,
+                "version": version,
+            }
+        )
+    return {"result": result, "saved": saved}
+
+
+@router.post("/interview")
+def create_interview(req: InterviewRequest):
+    result = interview_questions(
+        cover_letter_text=req.cover_letter_text,
+        company=req.company,
+        job_role=req.job_role,
+        methodology_preference=req.methodology_preference,
+    )
+    return {"result": result}
