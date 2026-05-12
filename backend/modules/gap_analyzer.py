@@ -90,10 +90,16 @@ JSON 외 다른 텍스트 없이 응답하세요.""")
 
 GAP_PROMPT = """아래 JD 요건과 사용자 경험을 비교해 갭을 분석하세요.
 
-## JD 요건
+## JD 요건 (전체)
 <requirements>
 {requirements}
 </requirements>
+
+## ★ 점수 계산용 항목 목록 (이 이름을 그대로 사용할 것)
+필수(required_skills): {required_list}
+우대(preferred_skills): {preferred_list}
+
+**중요**: matched[], partial[], missing[]의 "item" 값은 반드시 위 목록에 있는 문자열을 **철자까지 동일하게** 복사하십시오. 절대 다른 이름·약어·번역어로 바꾸지 마세요. 목록에 없는 항목은 item으로 쓰지 마세요.
 
 ## 사용자 경험 (날것 포함)
 <user_experience>
@@ -110,13 +116,13 @@ GAP_PROMPT = """아래 JD 요건과 사용자 경험을 비교해 갭을 분석�
   "match_score": 0,
   "match_summary": "한 줄 총평",
   "matched": [
-    {{"item": "요건명", "evidence": "원문 그대로 인용 (paraphrase 금지)", "strength": "strong|moderate"}}
+    {{"item": "위 목록의 항목명 그대로", "evidence": "원문 그대로 인용 (paraphrase 금지)", "strength": "strong|moderate"}}
   ],
   "partial": [
-    {{"item": "요건명", "evidence": "약한 근거 원문 인용", "gap": "어떤 부분이 부족한지", "suggestion": "어떻게 보강할지"}}
+    {{"item": "위 목록의 항목명 그대로", "evidence": "약한 근거 원문 인용", "gap": "어떤 부분이 부족한지", "suggestion": "어떻게 보강할지"}}
   ],
   "missing": [
-    {{"item": "요건명", "priority": "high|medium|low", "suggestion": "이 갭을 채울 방법 또는 우회 서술 방법"}}
+    {{"item": "위 목록의 항목명 그대로", "priority": "high|medium|low", "suggestion": "이 갭을 채울 방법 또는 우회 서술 방법"}}
   ],
   "keyword_gaps": ["JD에 있지만 경험에 없는 ATS 키워드"],
   "strengths_to_highlight": ["특히 강조해야 할 강점 2~3개"],
@@ -203,6 +209,8 @@ def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str)
 
     safe_exp = user_experience[:12000]
     safe_req = json.dumps(jd_requirements, ensure_ascii=False)[:4000]
+    required_list = json.dumps(jd_requirements.get("required_skills", []), ensure_ascii=False)
+    preferred_list = json.dumps(jd_requirements.get("preferred_skills", []), ensure_ascii=False)
 
     resp = _get_client().messages.create(
         model=settings.CLAUDE_MODEL,
@@ -210,6 +218,8 @@ def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str)
         system=GAP_SYSTEM,
         messages=[{"role": "user", "content": GAP_PROMPT.format(
             requirements=safe_req,
+            required_list=required_list,
+            preferred_list=preferred_list,
             experience=safe_exp,
             profile_block=profile_block,
         )}],
