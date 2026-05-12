@@ -198,6 +198,33 @@ export const api = {
       json: params,
     }),
 
+  // Gap analysis
+  extractJD: (jd: string) =>
+    request<Record<string, unknown>>("/api/analyze/gap/extract-jd", {
+      method: "POST",
+      json: { jd },
+    }),
+  analyzeGap: (params: { jd_requirements: Record<string, unknown>; user_experience: string }) =>
+    request<Record<string, unknown>>("/api/analyze/gap/analyze", {
+      method: "POST",
+      json: params,
+    }),
+  generateCareerDescription: (params: {
+    jd_requirements: Record<string, unknown>;
+    gap_analysis: Record<string, unknown>;
+    user_experience: string;
+  }) =>
+    request<Record<string, unknown>>("/api/analyze/gap/career-description", {
+      method: "POST",
+      json: params,
+    }),
+  runGapPipeline: (params: { jd: string; user_experience: string }) =>
+    request<{
+      jd_requirements: Record<string, unknown>;
+      gap_analysis: Record<string, unknown>;
+      career_description: Record<string, unknown>;
+    }>("/api/analyze/gap", { method: "POST", json: params }),
+
   // History
   listLetters: (company?: string) =>
     request<CoverLetter[]>(

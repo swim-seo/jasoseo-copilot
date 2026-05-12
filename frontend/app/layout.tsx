@@ -48,6 +48,12 @@ export default function RootLayout({
                 초안 검토
               </Link>
               <Link
+                href="/gap"
+                className="px-3 py-1.5 rounded-md hover:bg-[var(--accent-soft)] transition"
+              >
+                JD 매칭
+              </Link>
+              <Link
                 href="/history"
                 className="px-3 py-1.5 rounded-md hover:bg-[var(--accent-soft)] transition"
               >
