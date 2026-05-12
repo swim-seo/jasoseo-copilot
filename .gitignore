@@ -12,6 +12,9 @@ data/youtube_scripts/*.vtt
 *.log
 ingest_log*.txt
 collect_*.log
+codex_*.log
+gemini_*.log
+frontend_build.log
 
 # Frontend (Next.js)
 frontend/node_modules/

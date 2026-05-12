@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1f1f1f;
+  --muted: #6b6b6b;
+  --card: #f7f7f5;
+  --border: #e8e8e6;
+  --accent: #2f2f2f;
+  --accent-soft: #f0efed;
+  --success: #2c7a4a;
+  --warn: #b76e00;
+  --danger: #b03a3a;
+  --persona-careersaida: #1f6feb;
+  --persona-leehyung: #c8362d;
+  --persona-kang: #6c4ab2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+.surface {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border-radius: 8px;
+  padding: 0.6rem 1.1rem;
+  font-weight: 500;
+  transition: opacity 0.15s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.85;
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  font-weight: 500;
+  transition: background 0.15s ease;
+}
+
+.btn-ghost:hover {
+  background: var(--accent-soft);
+}
+
+.input {
+  width: 100%;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.textarea {
+  width: 100%;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 8rem;
+  transition: border-color 0.15s ease;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: var(--accent-soft);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.chip-success {
+  background: rgba(44, 122, 74, 0.1);
+  color: var(--success);
+  border-color: rgba(44, 122, 74, 0.25);
+}
+
+.chip-warn {
+  background: rgba(183, 110, 0, 0.1);
+  color: var(--warn);
+  border-color: rgba(183, 110, 0, 0.25);
+}
+
+.chip-danger {
+  background: rgba(176, 58, 58, 0.1);
+  color: var(--danger);
+  border-color: rgba(176, 58, 58, 0.25);
+}
+
+button:focus-visible,
+.input:focus-visible,
+.textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.alert-banner {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  background: rgba(176, 58, 58, 0.08);
+  border: 1px solid rgba(176, 58, 58, 0.3);
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.875rem;
+}

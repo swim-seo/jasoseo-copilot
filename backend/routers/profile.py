@@ -1,7 +1,10 @@
-from fastapi import APIRouter, File, Form, UploadFile
-from pydantic import BaseModel
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 
 from backend.modules import profile_importer, user_profile
+
+MAX_PDF_BYTES = profile_importer.MAX_PDF_BYTES
+MAX_INPUT_CHARS = profile_importer.MAX_INPUT_CHARS
 
 router = APIRouter()
 
@@ -69,13 +72,23 @@ async def import_profile(
 ):
     """PDF 또는 자유텍스트 → Claude로 STAR 구조화된 미리보기.
     저장하지 않고 사용자 검토용 결과만 반환."""
-    raw_text = text or ""
+    raw_text = (text or "")[:MAX_INPUT_CHARS]
     if file:
+        if file.content_type and "pdf" not in file.content_type.lower():
+            raise HTTPException(status_code=400, detail="PDF 파일만 업로드 가능합니다")
         pdf_bytes = await file.read()
+        if len(pdf_bytes) > MAX_PDF_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"PDF가 너무 큽니다 (최대 {MAX_PDF_BYTES // 1024 // 1024}MB)",
+            )
         try:
-            raw_text = (raw_text + "\n\n" + profile_importer.extract_pdf_text(pdf_bytes)).strip()
+            pdf_text = profile_importer.extract_pdf_text(pdf_bytes)
+        except profile_importer.PdfImportError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
         except Exception as e:
-            return {"error": f"PDF 파싱 실패: {e}", "raw_text": ""}
+            raise HTTPException(status_code=400, detail=f"PDF 처리 실패: {e}") from e
+        raw_text = (raw_text + "\n\n" + pdf_text).strip()[:MAX_INPUT_CHARS]
     analysis = profile_importer.analyze_text(raw_text)
     return {"raw_text": raw_text[:2000], **analysis}
 
