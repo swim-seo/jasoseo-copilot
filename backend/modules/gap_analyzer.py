@@ -214,7 +214,7 @@ def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str)
 
     resp = _get_client().messages.create(
         model=settings.CLAUDE_MODEL,
-        max_tokens=2000,
+        max_tokens=4000,
         system=GAP_SYSTEM,
         messages=[{"role": "user", "content": GAP_PROMPT.format(
             requirements=safe_req,
@@ -224,14 +224,22 @@ def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str)
             profile_block=profile_block,
         )}],
     )
+    raw_text = resp.content[0].text
     try:
-        result = _parse_json(resp.content[0].text)
+        result = _parse_json(raw_text)
         score, breakdown = _compute_score(result, jd_requirements)
         result["match_score"] = score
         result["score_breakdown"] = breakdown
         return result
-    except Exception:
-        return {"raw": resp.content[0].text[:500], "error": "갭 분석 파싱 실패"}
+    except Exception as e:
+        return {
+            "match_score": 0,
+            "match_summary": f"분석 응답 파싱 실패: {e}",
+            "matched": [], "partial": [], "missing": [],
+            "keyword_gaps": [], "strengths_to_highlight": [], "critical_gaps": [],
+            "score_breakdown": {"score_reason": f"파싱 오류 — 원문 앞 200자: {raw_text[:200]}"},
+            "error": "갭 분석 파싱 실패",
+        }
 
 
 # ── Step 3: 경력기술서 생성 ────────────────────────────────────────────────
