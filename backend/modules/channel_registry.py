@@ -7,8 +7,8 @@ CHANNEL_PROFILES: dict[str, dict[str, str]] = {
         "methodology": "careersaida_star",
         "content_type": "consultation",
     },
-    "lee_hyung": {
-        "source_channel": "lee_hyung",
+    "leebro_interview": {
+        "source_channel": "leebro_interview",
         "methodology": "leehyung_3C4P",
         "content_type": "framework",
     },

@@ -7,4 +7,15 @@ dist/
 .pytest_cache/
 chroma_db/
 data/youtube_scripts/*.txt
+data/youtube_scripts/*.vtt
 !data/youtube_scripts/.gitkeep
+*.log
+ingest_log*.txt
+collect_*.log
+
+# Frontend (Next.js)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.vercel

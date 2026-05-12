@@ -12,6 +12,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Windows cp949 콘솔에서 이모지/일부 한글 출력시 UnicodeEncodeError 방지
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from backend.modules.channel_registry import profile_for_source
 from backend.modules.methodology_rag import upsert_chunks
 

@@ -23,6 +23,10 @@ from pathlib import Path
 
 import yt_dlp
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 SCRIPTS_DIR = Path("data/youtube_scripts")
 DEFAULT_MAX = 50
 
@@ -60,18 +64,38 @@ def _clean_vtt(vtt_text: str) -> str:
     return "\n".join(deduped)
 
 
-def _save_transcript(video_id: str, title: str, vtt_path: Path) -> Path:
-    """VTT 파일을 clean txt로 변환하여 저장"""
+_CHANNEL_HANDLE_RE = re.compile(r"@([A-Za-z0-9_\-]+)")
+
+
+def _extract_channel_handle(*sources: str) -> str:
+    """yt-dlp info 또는 URL 문자열에서 채널 핸들(@xxx) 추출. 없으면 빈 문자열."""
+    for src in sources:
+        if not src:
+            continue
+        m = _CHANNEL_HANDLE_RE.search(src)
+        if m:
+            return m.group(1)
+    return ""
+
+
+def _save_transcript(
+    video_id: str, title: str, vtt_path: Path, channel_handle: str = ""
+) -> Path:
+    """VTT 파일을 clean txt로 변환하여 저장. 채널 핸들을 헤더에 기록."""
     vtt_text = vtt_path.read_text(encoding="utf-8", errors="ignore")
     clean_text = _clean_vtt(vtt_text)
 
     safe_title = re.sub(r'[\\/*?:"<>|]', "", title)[:60].strip()
     output_path = SCRIPTS_DIR / f"{safe_title}_{video_id}.txt"
 
-    header = f"출처: https://www.youtube.com/watch?v={video_id}\n제목: {title}\n\n"
+    channel_line = f"채널: @{channel_handle}\n" if channel_handle else ""
+    header = (
+        f"출처: https://www.youtube.com/watch?v={video_id}\n"
+        f"{channel_line}"
+        f"제목: {title}\n\n"
+    )
     output_path.write_text(header + clean_text, encoding="utf-8")
 
-    # 원본 VTT 삭제
     vtt_path.unlink(missing_ok=True)
     return output_path
 
@@ -107,11 +131,20 @@ def collect(urls: list[str], max_videos: int = DEFAULT_MAX) -> list[Path]:
             entries = info.get("entries") if info else None
             videos = entries if entries else ([info] if info else [])
 
+            # URL 또는 채널 메타데이터에서 핸들 추출
+            top_handle = _extract_channel_handle(
+                url, info.get("uploader_url", "") if info else "", info.get("channel_url", "") if info else ""
+            )
+
             for video in videos:
                 if not video:
                     continue
                 video_id = video.get("id", "")
                 title = video.get("title", video_id)
+                video_handle = _extract_channel_handle(
+                    video.get("uploader_url", ""),
+                    video.get("channel_url", ""),
+                ) or top_handle
 
                 # 저장된 VTT 파일 찾기 (ko 또는 ko-KR)
                 vtt_files = list(SCRIPTS_DIR.glob(f"{video_id}*.vtt"))
@@ -119,7 +152,7 @@ def collect(urls: list[str], max_videos: int = DEFAULT_MAX) -> list[Path]:
                     print(f"  ✗ 자막 없음: {title[:40]}")
                     continue
 
-                saved = _save_transcript(video_id, title, vtt_files[0])
+                saved = _save_transcript(video_id, title, vtt_files[0], video_handle)
                 # 남은 VTT 파일 정리
                 for f in vtt_files[1:]:
                     f.unlink(missing_ok=True)
