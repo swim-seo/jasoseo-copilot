@@ -216,31 +216,34 @@ export default function WritePage() {
             )}
           </div>
 
+          <div className="surface p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                채용 공고 (JD) 붙여넣기
+              </label>
+              <span className="text-xs text-[var(--muted)]">
+                {jobPosting.length}자 · 권장
+              </span>
+            </div>
+            <textarea
+              className="textarea min-h-40"
+              value={jobPosting}
+              onChange={(e) => setJobPosting(e.target.value)}
+              placeholder="채용 공고 전문을 그대로 붙여넣으세요. 자격 요건·우대사항·주요 업무가 모두 들어가면 페르소나가 JD 핵심을 더 정확히 반영합니다."
+            />
+          </div>
+
           <details className="surface p-5">
             <summary className="text-sm font-medium cursor-pointer">
-              채용 공고·추가 자료 직접 붙여넣기 (선택)
+              추가 자료 (뉴스·IR·사내 자료, 선택)
             </summary>
-            <div className="mt-3 space-y-3">
-              <div>
-                <label className="block text-xs text-[var(--muted)] mb-1">
-                  채용 공고 텍스트
-                </label>
-                <textarea
-                  className="textarea min-h-24"
-                  value={jobPosting}
-                  onChange={(e) => setJobPosting(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--muted)] mb-1">
-                  추가 자료 (뉴스, IR 등)
-                </label>
-                <textarea
-                  className="textarea min-h-24"
-                  value={extraContext}
-                  onChange={(e) => setExtraContext(e.target.value)}
-                />
-              </div>
+            <div className="mt-3">
+              <textarea
+                className="textarea min-h-24"
+                value={extraContext}
+                onChange={(e) => setExtraContext(e.target.value)}
+                placeholder="이 회사 관련 최근 뉴스, IR 자료, 사업 보고서 등"
+              />
             </div>
           </details>
 

@@ -54,6 +54,7 @@ class MultiFeedbackRequest(BaseModel):
     company: str = ""
     job_role: str = ""
     question: str = ""
+    job_posting: str = ""
     mode: str = "cover_letter"
     persona_keys: list[str] | None = None
 
@@ -65,6 +66,7 @@ class SynthesizeRequest(BaseModel):
     company: str = ""
     job_role: str = ""
     question: str = ""
+    job_posting: str = ""
     parent_letter_id: int | None = None
     save: bool = True
 
@@ -155,6 +157,7 @@ def create_multi_feedback(req: MultiFeedbackRequest):
         company=req.company,
         job_role=req.job_role,
         question=req.question,
+        job_posting=req.job_posting,
         persona_keys=req.persona_keys,
         mode=req.mode,
     )
@@ -171,6 +174,7 @@ def create_synthesis(req: SynthesizeRequest):
         company=req.company,
         job_role=req.job_role,
         question=req.question,
+        job_posting=req.job_posting,
     )
     saved = None
     if req.save and result.get("final_text"):

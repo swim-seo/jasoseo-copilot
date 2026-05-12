@@ -163,6 +163,7 @@ export const api = {
     company?: string;
     job_role?: string;
     question?: string;
+    job_posting?: string;
     mode?: "cover_letter" | "portfolio";
     persona_keys?: string[];
   }) =>
@@ -178,6 +179,7 @@ export const api = {
     company?: string;
     job_role?: string;
     question?: string;
+    job_posting?: string;
     parent_letter_id?: number;
     save?: boolean;
   }) =>

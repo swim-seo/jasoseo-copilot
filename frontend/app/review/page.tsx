@@ -33,6 +33,7 @@ export default function ReviewPage() {
   const [company, setCompany] = useState(initial.company ?? "");
   const [jobRole, setJobRole] = useState(initial.job_role ?? "");
   const [question, setQuestion] = useState(initial.question ?? "");
+  const [jobPosting, setJobPosting] = useState("");
 
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
@@ -63,6 +64,7 @@ export default function ReviewPage() {
         company,
         job_role: jobRole,
         question,
+        job_posting: jobPosting,
         mode,
       });
       setFeedbacks(res.feedbacks);
@@ -84,6 +86,7 @@ export default function ReviewPage() {
         company,
         job_role: jobRole,
         question,
+        job_posting: jobPosting,
         save: true,
       });
       setSynthesis(res.result);
@@ -166,6 +169,22 @@ export default function ReviewPage() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="예: 지원 동기 및 포부"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-[var(--muted)]">
+                  채용 공고 (JD, 선택)
+                </label>
+                <span className="text-xs text-[var(--muted)]">
+                  {jobPosting.length}자
+                </span>
+              </div>
+              <textarea
+                className="textarea min-h-24"
+                value={jobPosting}
+                onChange={(e) => setJobPosting(e.target.value)}
+                placeholder="채용 공고 전문을 붙여넣으면 페르소나가 JD 핵심을 반영해서 피드백합니다"
               />
             </div>
           </div>
