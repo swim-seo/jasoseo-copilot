@@ -30,6 +30,46 @@ def _parse_json(text: str) -> dict | list:
     return json.loads(text)
 
 
+# ── Step 0: 경험 JD 맞춤 압축 ────────────────────────────────────────────
+
+_COMPRESS_THRESHOLD = 6000  # 이 길이 초과 시 압축 전처리 실행
+
+_COMPRESS_SYSTEM = """당신은 채용 전문가입니다. 지원자의 원시 경험 텍스트에서 주어진 JD 요건에 관련된 내용만 추출해 구조화하세요.
+- 원문의 실제 문장·수치·기술명을 그대로 보존하세요 (paraphrase 금지).
+- 관련 없는 내용은 버리세요.
+- 출력은 3000자 이내 한국어 텍스트.
+- JSON이나 특별한 형식 없이 읽기 쉬운 구조화 텍스트로."""
+
+_COMPRESS_PROMPT = """아래 JD 요건과 관련된 경험만 원문에서 뽑아 정리하세요.
+
+## JD 요건 (필수 + 우대)
+{skills_list}
+
+## 원시 경험 텍스트
+{raw_experience}"""
+
+
+def _compress_experience(raw_experience: str, jd_requirements: dict) -> str:
+    """경험이 길면 JD 요건 중심으로 압축해 갭 분석 품질과 토큰 효율 확보."""
+    if len(raw_experience) <= _COMPRESS_THRESHOLD:
+        return raw_experience
+
+    required = jd_requirements.get("required_skills", [])
+    preferred = jd_requirements.get("preferred_skills", [])
+    skills_list = "필수: " + ", ".join(required) + "\n우대: " + ", ".join(preferred)
+
+    resp = _get_client().messages.create(
+        model=settings.CLAUDE_MODEL,
+        max_tokens=1200,
+        system=_COMPRESS_SYSTEM,
+        messages=[{"role": "user", "content": _COMPRESS_PROMPT.format(
+            skills_list=skills_list,
+            raw_experience=raw_experience[:40000],
+        )}],
+    )
+    return resp.content[0].text.strip()
+
+
 # ── Step 1: JD 요건 추출 ──────────────────────────────────────────────────
 
 JD_EXTRACT_SYSTEM = """당신은 채용 공고(JD)를 분석하는 리크루팅 전문가입니다.
@@ -207,7 +247,8 @@ def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str)
             "score_breakdown": {"score_reason": "경험 데이터 없음"},
         }
 
-    safe_exp = user_experience[:12000]
+    compressed = _compress_experience(user_experience, jd_requirements)
+    safe_exp = compressed[:12000]
     safe_req = json.dumps(jd_requirements, ensure_ascii=False)[:4000]
     required_list = json.dumps(jd_requirements.get("required_skills", []), ensure_ascii=False)
     preferred_list = json.dumps(jd_requirements.get("preferred_skills", []), ensure_ascii=False)
