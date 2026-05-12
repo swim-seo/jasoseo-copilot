@@ -23,12 +23,14 @@ type GapAnalysis = {
 
 type CareerDesc = {
   profile_summary: string;
-  career_sections: {
+  projects: {
+    project_name: string;
     company: string;
     period: string;
-    title: string;
-    responsibilities: string[];
-    achievements: string[];
+    role: string;
+    background: string;
+    actions: string[];
+    results: string[];
   }[];
   skills: { core: string[]; tools: string[]; domain: string[] };
   supplement_needed: string[];
@@ -364,16 +366,30 @@ export default function GapPage() {
             </p>
           </div>
 
-          {/* 경력 섹션 */}
-          {career.career_sections?.length > 0 && (
+          {/* 프로젝트별 경력 */}
+          {(career.projects?.length ?? 0) > 0 && (
             <div className="space-y-3">
-              <div className="text-xs text-[var(--muted)] uppercase tracking-wider">경력 사항</div>
-              {career.career_sections.map((sec, i) => (
+              <div className="text-xs text-[var(--muted)] uppercase tracking-wider">프로젝트별 경력</div>
+              {career.projects.map((p, i) => (
                 <div key={i} className="bg-[var(--background)] border border-[var(--border)] rounded p-4 text-sm space-y-2">
-                  <div className="font-medium">{sec.company} <span className="text-[var(--muted)] font-normal">· {sec.title} · {sec.period}</span></div>
-                  {sec.achievements?.length > 0 && (
+                  <div className="font-semibold">{p.project_name}</div>
+                  <div className="text-[var(--muted)] text-xs">{p.company} · {p.role} · {p.period}</div>
+                  {p.background && (
+                    <div className="text-xs text-[var(--muted)] italic">{p.background}</div>
+                  )}
+                  {p.actions?.length > 0 && (
                     <ul className="space-y-1 list-disc list-inside text-[13px]">
-                      {sec.achievements.map((a, j) => <li key={j}>{a}</li>)}
+                      {p.actions.map((a, j) => <li key={j}>{a}</li>)}
+                    </ul>
+                  )}
+                  {p.results?.length > 0 && (
+                    <ul className="space-y-1 text-[13px]">
+                      {p.results.map((r, j) => (
+                        <li key={j} className="flex gap-2">
+                          <span className="text-[var(--success)] shrink-0">→</span>
+                          <span className={r.includes("수치 확인 필요") ? "text-yellow-700" : ""}>{r}</span>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>
