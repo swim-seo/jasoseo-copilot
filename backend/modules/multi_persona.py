@@ -17,6 +17,7 @@ from backend.modules.user_profile import (
     list_experiences,
     render_profile_block,
 )
+from backend.modules.writing_guide import prepend_guide
 
 ACTIVE_PERSONA_KEYS = [k for k in PERSONAS if k != "auto"]
 
@@ -130,13 +131,13 @@ def _single_persona_feedback(
         f"[{c.get('source_channel', '')}]\n{c['content']}" for c in chunks
     )
 
-    system = FEEDBACK_SYSTEM_TEMPLATE.format(
+    system = prepend_guide(FEEDBACK_SYSTEM_TEMPLATE.format(
         persona_system=persona["system"],
         persona_label=persona["label"],
         persona_framework=persona["tagline"],
         mode=mode,
         mode_guide=MODE_GUIDE.get(mode, MODE_GUIDE["cover_letter"]),
-    )
+    ))
     # 입력 cap (비용 + DoS 방어)
     safe_draft = (draft or "")[:20000]
     safe_chunks = (chunks_text or "")[:8000]
@@ -300,7 +301,7 @@ def synthesize(
     response = client.messages.create(
         model=settings.CLAUDE_MODEL,
         max_tokens=3000,
-        system=SYNTHESIS_SYSTEM,
+        system=prepend_guide(SYNTHESIS_SYSTEM),
         messages=[{"role": "user", "content": user}],
     )
     text = response.content[0].text

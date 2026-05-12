@@ -10,6 +10,7 @@ from backend.modules.user_profile import (
     render_profile_block,
 )
 from backend.modules.web_searcher import research_company, research_job_posting
+from backend.modules.writing_guide import prepend_guide
 
 BASE_SYSTEM = """당신은 한국 대기업 자소서 전문 코치입니다.
 
@@ -56,7 +57,8 @@ def _classify_question_type(question: str) -> str | None:
 
 def _build_system_prompt(persona_key: str) -> str:
     persona = get_persona(persona_key)
-    return f"{BASE_SYSTEM}\n\n## 선택된 페르소나: {persona['label']}\n{persona['system']}"
+    base = f"{BASE_SYSTEM}\n\n## 선택된 페르소나: {persona['label']}\n{persona['system']}"
+    return prepend_guide(base)
 
 
 def _build_user_prompt(
