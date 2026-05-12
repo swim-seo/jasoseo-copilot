@@ -124,28 +124,60 @@ GAP_PROMPT = """아래 JD 요건과 사용자 경험을 비교해 갭을 분석�
 }}"""
 
 
-def _compute_score(gap: dict, jd_requirements: dict) -> int:
-    """match_score를 결정론적으로 계산. required=2점, preferred=1점, partial=절반."""
-    required = set(jd_requirements.get("required_skills", []))
-    preferred = set(jd_requirements.get("preferred_skills", []))
-    all_req = required | preferred
-    if not all_req:
-        return 0
-
-    total_weight = len(required) * 2 + len(preferred) * 1
-    if total_weight == 0:
-        return 0
+def _compute_score(gap: dict, jd_requirements: dict) -> tuple[int, dict]:
+    """
+    결정론적 점수 계산.
+    - 필수 요건 달성률 → 70점 비중
+    - 우대 요건 달성률 → 30점 비중
+    - partial은 0.4배만 인정 (증거 있지만 수치·사례 부족)
+    반환: (최종점수, 점수_설명_dict)
+    """
+    required = list(jd_requirements.get("required_skills", []))
+    preferred = list(jd_requirements.get("preferred_skills", []))
+    required_set = set(required)
+    preferred_set = set(preferred)
 
     matched_items = {m["item"] for m in gap.get("matched", [])}
     partial_items = {p["item"] for p in gap.get("partial", [])}
 
-    score = 0
-    for item in matched_items:
-        score += 2 if item in required else 1
-    for item in partial_items:
-        score += 1 if item in required else 0.5
+    req_matched = [i for i in required if i in matched_items]
+    req_partial = [i for i in required if i in partial_items]
+    req_missing = [i for i in required if i not in matched_items and i not in partial_items]
 
-    return min(100, round(score / total_weight * 100))
+    pref_matched = [i for i in preferred if i in matched_items]
+    pref_partial = [i for i in preferred if i in partial_items]
+
+    req_score = 0.0
+    if required:
+        req_earned = len(req_matched) + len(req_partial) * 0.4
+        req_score = req_earned / len(required)
+
+    pref_score = 0.0
+    if preferred:
+        pref_earned = len(pref_matched) + len(pref_partial) * 0.4
+        pref_score = pref_earned / len(preferred)
+
+    final = round(req_score * 70 + pref_score * 30)
+
+    breakdown = {
+        "required_total": len(required),
+        "required_matched": len(req_matched),
+        "required_partial": len(req_partial),
+        "required_missing": len(req_missing),
+        "preferred_total": len(preferred),
+        "preferred_matched": len(pref_matched),
+        "preferred_partial": len(pref_partial),
+        "req_matched_list": req_matched,
+        "req_partial_list": req_partial,
+        "req_missing_list": req_missing,
+        "score_reason": (
+            f"필수 요건 {len(required)}개 중 {len(req_matched)}개 충족 "
+            f"({len(req_partial)}개 부분 충족) → {round(req_score*70)}점 / 70점, "
+            f"우대 요건 {len(preferred)}개 중 {len(pref_matched)}개 충족 "
+            f"({len(pref_partial)}개 부분 충족) → {round(pref_score*30)}점 / 30점"
+        ),
+    }
+    return min(100, final), breakdown
 
 
 def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str) -> dict:
@@ -164,6 +196,7 @@ def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str)
             "keyword_gaps": all_items,
             "strengths_to_highlight": [],
             "critical_gaps": all_items,
+            "score_breakdown": {"score_reason": "경험 데이터 없음"},
         }
 
     safe_exp = user_experience[:12000]
@@ -181,8 +214,9 @@ def analyze_gap(jd_requirements: dict, user_experience: str, profile_block: str)
     )
     try:
         result = _parse_json(resp.content[0].text)
-        # Claude가 생성한 match_score 무시, 결정론적으로 덮어쓰기
-        result["match_score"] = _compute_score(result, jd_requirements)
+        score, breakdown = _compute_score(result, jd_requirements)
+        result["match_score"] = score
+        result["score_breakdown"] = breakdown
         return result
     except Exception:
         return {"raw": resp.content[0].text[:500], "error": "갭 분석 파싱 실패"}

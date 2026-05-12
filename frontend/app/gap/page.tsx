@@ -10,6 +10,20 @@ type MatchItem = { item: string; evidence: string; strength: "strong" | "moderat
 type PartialItem = { item: string; evidence: string; gap: string; suggestion: string };
 type MissingItem = { item: string; priority: "high" | "medium" | "low"; suggestion: string };
 
+type ScoreBreakdown = {
+  required_total?: number;
+  required_matched?: number;
+  required_partial?: number;
+  required_missing?: number;
+  preferred_total?: number;
+  preferred_matched?: number;
+  preferred_partial?: number;
+  req_matched_list?: string[];
+  req_partial_list?: string[];
+  req_missing_list?: string[];
+  score_reason?: string;
+};
+
 type GapAnalysis = {
   match_score: number;
   match_summary: string;
@@ -19,6 +33,7 @@ type GapAnalysis = {
   keyword_gaps: string[];
   strengths_to_highlight: string[];
   critical_gaps: string[];
+  score_breakdown?: ScoreBreakdown;
 };
 
 type CareerDesc = {
@@ -246,12 +261,47 @@ export default function GapPage() {
       {gap && (
         <div className="surface p-5 space-y-5">
           {/* 매칭 점수 */}
-          <div className="flex items-center gap-4">
-            <div className="text-3xl font-bold">{gap.match_score}<span className="text-base font-normal text-[var(--muted)]">/100</span></div>
-            <div>
-              <div className="text-sm font-medium">매칭도</div>
-              <div className="text-xs text-[var(--muted)]">{gap.match_summary}</div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="text-3xl font-bold">{gap.match_score}<span className="text-base font-normal text-[var(--muted)]">/100</span></div>
+              <div>
+                <div className="text-sm font-medium">매칭도</div>
+                <div className="text-xs text-[var(--muted)]">{gap.match_summary}</div>
+              </div>
             </div>
+
+            {gap.score_breakdown?.score_reason && (
+              <div className="bg-[var(--background)] border border-[var(--border)] rounded p-3 text-xs space-y-2">
+                <div className="font-medium text-[var(--foreground)]">점수 산출 근거</div>
+                <div className="text-[var(--muted)]">{gap.score_breakdown.score_reason}</div>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {gap.score_breakdown.req_matched_list && gap.score_breakdown.req_matched_list.length > 0 && (
+                    <div>
+                      <div className="text-green-700 font-medium mb-1">✅ 필수 충족</div>
+                      {gap.score_breakdown.req_matched_list.map((i, idx) => (
+                        <div key={idx} className="text-green-700">{i}</div>
+                      ))}
+                    </div>
+                  )}
+                  {gap.score_breakdown.req_partial_list && gap.score_breakdown.req_partial_list.length > 0 && (
+                    <div>
+                      <div className="text-yellow-700 font-medium mb-1">⚠️ 부분 충족</div>
+                      {gap.score_breakdown.req_partial_list.map((i, idx) => (
+                        <div key={idx} className="text-yellow-700">{i}</div>
+                      ))}
+                    </div>
+                  )}
+                  {gap.score_breakdown.req_missing_list && gap.score_breakdown.req_missing_list.length > 0 && (
+                    <div>
+                      <div className="text-red-700 font-medium mb-1">❌ 필수 미충족</div>
+                      {gap.score_breakdown.req_missing_list.map((i, idx) => (
+                        <div key={idx} className="text-red-700">{i}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {(gap.critical_gaps?.length ?? 0) > 0 && (
