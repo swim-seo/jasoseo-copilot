@@ -348,7 +348,7 @@ export default function GapPage() {
       {gap && (
         <div className="space-y-4">
           {/* 서류 통과 확률 헤더 카드 */}
-          <div className="surface p-6">
+          <div className="surface p-6 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <div className="text-xs text-[var(--muted)] uppercase tracking-wider mb-1">서류 통과 예상 확률</div>
@@ -383,15 +383,22 @@ export default function GapPage() {
                 )}
               </div>
             </div>
-          </div>
 
-          {/* 직무 적합도 총평 */}
-          {gap.match_summary && (
-            <div className="surface p-4 border-l-4 border-[var(--accent)]">
-              <div className="text-xs text-[var(--muted)] uppercase tracking-wider mb-1">직무 적합도 총평</div>
-              <p className="text-sm leading-6">{gap.match_summary}</p>
-            </div>
-          )}
+            {/* 점수 산출 근거 — 카드 안에 바로 표시 */}
+            {bd?.score_reason && (
+              <div className="text-xs text-[var(--muted)] border-t border-[var(--border)] pt-3">
+                {bd.score_reason}
+              </div>
+            )}
+
+            {/* 직무 적합도 총평 — 카드 안에 바로 표시 */}
+            {gap.match_summary && (
+              <div className="border-l-4 border-[var(--accent)] pl-3">
+                <div className="text-xs text-[var(--muted)] mb-1">직무 적합도 총평</div>
+                <p className="text-sm leading-6">{gap.match_summary}</p>
+              </div>
+            )}
+          </div>
 
           {/* 치명적 갭 배너 */}
           {(gap.critical_gaps?.length ?? 0) > 0 && (
