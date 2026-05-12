@@ -1,8 +1,12 @@
+from urllib.parse import quote
+
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.modules.gap_analyzer import (
     analyze_gap,
+    build_career_docx,
     extract_jd_requirements,
     generate_career_description,
     run_gap_pipeline,
@@ -65,4 +69,19 @@ def gap_career_description(req: GenerateCareerRequest):
         req.gap_analysis,
         req.user_experience,
         profile_block,
+    )
+
+
+class ExportDocxRequest(BaseModel):
+    career: dict
+
+
+@router.post("/gap/career-description/export/docx")
+def export_career_docx(req: ExportDocxRequest):
+    """이미 생성된 경력기술서 JSON → .docx 다운로드."""
+    filename = quote("경력기술서.docx")
+    return StreamingResponse(
+        build_career_docx(req.career),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
     )

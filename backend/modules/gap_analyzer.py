@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from io import BytesIO
 
 import anthropic
 
@@ -13,6 +14,8 @@ from backend.modules.user_profile import get_profile, list_experiences, render_p
 from backend.modules.writing_guide import prepend_guide
 
 _client = None
+_DOCX_QN = None
+_DOCX_PT = None
 
 
 def _get_client() -> anthropic.Anthropic:
@@ -384,7 +387,7 @@ def generate_career_description(
 
     resp = _get_client().messages.create(
         model=settings.CLAUDE_MODEL,
-        max_tokens=4000,
+        max_tokens=8000,
         system=CAREER_DESC_SYSTEM,
         messages=[{"role": "user", "content": CAREER_DESC_PROMPT.format(
             requirements=safe_req,
@@ -401,6 +404,115 @@ def generate_career_description(
 
 
 # ── 통합 파이프라인 ───────────────────────────────────────────────────────
+
+def _set_run_font(
+    run,
+    size: int | None = None,
+    bold: bool = False,
+    italic: bool = False,
+) -> None:
+    global _DOCX_QN, _DOCX_PT
+    run.font.name = "Malgun Gothic"
+    run._element.rPr.rFonts.set(_DOCX_QN("w:eastAsia"), "Malgun Gothic")
+    if size is not None:
+        run.font.size = _DOCX_PT(size)
+    run.bold = bold
+    run.italic = italic
+
+
+def _add_text_paragraph(
+    document,
+    text: str,
+    size: int = 11,
+    italic: bool = False,
+) -> None:
+    paragraph = document.add_paragraph()
+    run = paragraph.add_run(text or "")
+    _set_run_font(run, size=size, italic=italic)
+
+
+def _add_section_header(document, text: str) -> None:
+    paragraph = document.add_paragraph()
+    run = paragraph.add_run(text)
+    _set_run_font(run, size=14, bold=True)
+
+
+def _add_bullet(document, text: str) -> None:
+    paragraph = document.add_paragraph(style="List Bullet")
+    run = paragraph.add_run(text or "")
+    _set_run_font(run, size=11)
+
+
+def build_career_docx(data: dict) -> BytesIO:
+    """Build a Korean career description DOCX from career-description JSON."""
+    global _DOCX_QN, _DOCX_PT
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.shared import Pt
+
+    _DOCX_QN = qn
+    _DOCX_PT = Pt
+    data = data or {}
+    document = Document()
+
+    title = document.add_paragraph()
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_run = title.add_run("경력기술서")
+    _set_run_font(title_run, size=20, bold=True)
+
+    _add_section_header(document, "요약 프로필")
+    _add_text_paragraph(document, data.get("profile_summary", ""), size=11)
+
+    _add_section_header(document, "프로젝트별 경력")
+    for project in data.get("projects") or []:
+        if not isinstance(project, dict):
+            continue
+
+        project_name = project.get("project_name") or "프로젝트"
+        paragraph = document.add_paragraph()
+        run = paragraph.add_run(project_name)
+        _set_run_font(run, size=12, bold=True)
+
+        metadata = " / ".join(
+            str(value)
+            for value in (
+                project.get("company"),
+                project.get("role"),
+                project.get("period"),
+            )
+            if value
+        )
+        if metadata:
+            _add_text_paragraph(document, metadata, size=11, italic=True)
+        if project.get("background"):
+            _add_text_paragraph(document, project.get("background", ""), size=11, italic=True)
+        for action in project.get("actions") or []:
+            _add_bullet(document, str(action))
+        for result in project.get("results") or []:
+            _add_bullet(document, f"→ {result}")
+
+    skills = data.get("skills") or {}
+    if not isinstance(skills, dict):
+        skills = {}
+
+    _add_section_header(document, "보유 역량")
+    core = ", ".join(str(item) for item in skills.get("core") or [])
+    tools = ", ".join(str(item) for item in skills.get("tools") or [])
+    _add_text_paragraph(document, f"Core: {core}", size=11)
+    _add_text_paragraph(document, f"Tools: {tools}", size=11)
+
+    supplement_needed = data.get("supplement_needed") or []
+    if supplement_needed:
+        _add_section_header(document, "보완 필요")
+        for item in supplement_needed:
+            _add_bullet(document, str(item))
+
+    buffer = BytesIO()
+    document.save(buffer)
+    buffer.seek(0)
+    return buffer
+
 
 def run_gap_pipeline(jd: str, user_experience: str) -> dict:
     """JD + 경험 raw → 요건추출 → 갭분석 → 경력기술서 생성."""

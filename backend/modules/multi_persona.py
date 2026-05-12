@@ -105,9 +105,17 @@ JSON 외 다른 텍스트 절대 포함하지 말 것."""
 
 def _parse_json_block(text: str) -> dict:
     text = text.strip()
+    # 완전한 코드블록
     m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL)
     if m:
-        text = m.group(1)
+        return json.loads(m.group(1))
+    # 닫는 ``` 없이 잘린 코드블록 → { 시작점부터 추출
+    m = re.search(r"```(?:json)?\s*", text)
+    if m:
+        text = text[m.end():]
+    start = next((i for i, c in enumerate(text) if c == "{"), None)
+    if start is not None:
+        text = text[start:]
     return json.loads(text)
 
 
@@ -178,7 +186,7 @@ JD가 제공된 경우 JD의 자격 요건·우대사항과 초안의 매칭도�
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     response = client.messages.create(
         model=settings.CLAUDE_MODEL,
-        max_tokens=1800,
+        max_tokens=3000,
         system=system,
         messages=[{"role": "user", "content": user}],
     )

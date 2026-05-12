@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Sparkles, Copy, Check, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, ChevronDown, ChevronUp, MessageSquare, FileDown } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Feedback } from "@/lib/api";
 
@@ -511,13 +511,21 @@ export default function GapPage() {
         <div className="surface p-5 space-y-5">
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold">경력기술서</div>
-            <button
-              onClick={copyFull}
-              className="text-xs text-[var(--muted)] flex items-center gap-1 px-2 py-1 rounded hover:bg-[var(--accent-soft)] transition"
-            >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? "복사됨" : "전문 복사"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => api.exportCareerDocx(career as unknown as Record<string, unknown>)}
+                className="text-xs text-[var(--muted)] flex items-center gap-1 px-2 py-1 rounded hover:bg-[var(--accent-soft)] transition"
+              >
+                <FileDown size={14} />Word 다운로드
+              </button>
+              <button
+                onClick={copyFull}
+                className="text-xs text-[var(--muted)] flex items-center gap-1 px-2 py-1 rounded hover:bg-[var(--accent-soft)] transition"
+              >
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                {copied ? "복사됨" : "전문 복사"}
+              </button>
+            </div>
           </div>
 
           {/* 요약 프로필 */}

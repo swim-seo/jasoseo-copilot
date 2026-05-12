@@ -218,6 +218,21 @@ export const api = {
       method: "POST",
       json: params,
     }),
+  exportCareerDocx: async (career: Record<string, unknown>): Promise<void> => {
+    const res = await fetch(`${API_BASE}/api/analyze/gap/career-description/export/docx`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ career }),
+    });
+    if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "경력기술서.docx";
+    a.click();
+    URL.revokeObjectURL(url);
+  },
   runGapPipeline: (params: { jd: string; user_experience: string }) =>
     request<{
       jd_requirements: Record<string, unknown>;
