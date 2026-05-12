@@ -52,8 +52,8 @@ export default function GapPage() {
   const [showFullText, setShowFullText] = useState(false);
 
   async function runStep1() {
-    if (!jd.trim() || !experience.trim()) {
-      setError("JD와 경험을 모두 입력해주세요");
+    if (!jd.trim()) {
+      setError("JD를 입력해주세요");
       return;
     }
     setError(null);
@@ -156,7 +156,7 @@ export default function GapPage() {
 
         <div className="surface p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">내 경험 (정리 안 해도 됩니다)</label>
+            <label className="text-sm font-medium">내 경험 <span className="text-[var(--muted)] font-normal text-xs">(선택 — 저장된 프로필 자동 반영)</span></label>
             <span className="text-xs text-[var(--muted)]">{experience.length}자</span>
           </div>
           <textarea
@@ -170,7 +170,7 @@ export default function GapPage() {
 
       <button
         onClick={runStep1}
-        disabled={loading || !jd.trim() || !experience.trim()}
+        disabled={loading || !jd.trim()}
         className="btn-primary w-full flex items-center justify-center gap-2"
       >
         {loading && step === "input" ? (
