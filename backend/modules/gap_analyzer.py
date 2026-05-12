@@ -134,18 +134,16 @@ def _compute_score(gap: dict, jd_requirements: dict) -> tuple[int, dict]:
     """
     required = list(jd_requirements.get("required_skills", []))
     preferred = list(jd_requirements.get("preferred_skills", []))
-    required_set = set(required)
-    preferred_set = set(preferred)
 
     matched_items = {m["item"] for m in gap.get("matched", [])}
     partial_items = {p["item"] for p in gap.get("partial", [])}
-
     req_matched = [i for i in required if i in matched_items]
     req_partial = [i for i in required if i in partial_items]
     req_missing = [i for i in required if i not in matched_items and i not in partial_items]
 
     pref_matched = [i for i in preferred if i in matched_items]
     pref_partial = [i for i in preferred if i in partial_items]
+    pref_missing = [i for i in preferred if i not in matched_items and i not in partial_items]
 
     req_score = 0.0
     if required:
@@ -167,9 +165,13 @@ def _compute_score(gap: dict, jd_requirements: dict) -> tuple[int, dict]:
         "preferred_total": len(preferred),
         "preferred_matched": len(pref_matched),
         "preferred_partial": len(pref_partial),
+        "preferred_missing": len(pref_missing),
         "req_matched_list": req_matched,
         "req_partial_list": req_partial,
         "req_missing_list": req_missing,
+        "pref_matched_list": pref_matched,
+        "pref_partial_list": pref_partial,
+        "pref_missing_list": pref_missing,
         "score_reason": (
             f"필수 요건 {len(required)}개 중 {len(req_matched)}개 충족 "
             f"({len(req_partial)}개 부분 충족) → {round(req_score*70)}점 / 70점, "
