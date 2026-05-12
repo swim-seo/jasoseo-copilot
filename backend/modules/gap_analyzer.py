@@ -64,7 +64,7 @@ def _compress_experience(raw_experience: str, jd_requirements: dict) -> str:
         system=_COMPRESS_SYSTEM,
         messages=[{"role": "user", "content": _COMPRESS_PROMPT.format(
             skills_list=skills_list,
-            raw_experience=raw_experience[:40000],
+            raw_experience=raw_experience[:80000],
         )}],
     )
     return resp.content[0].text.strip()
