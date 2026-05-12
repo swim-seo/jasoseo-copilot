@@ -252,7 +252,7 @@ export default function GapPage() {
             </div>
           </div>
 
-          {gap.critical_gaps.length > 0 && (
+          {(gap.critical_gaps?.length ?? 0) > 0 && (
             <div className="bg-red-50 border border-red-200 rounded p-3 text-sm space-y-1">
               <div className="font-medium text-red-700">치명적 갭</div>
               {gap.critical_gaps.map((g, i) => <div key={i} className="text-red-600">• {g}</div>)}
@@ -260,7 +260,7 @@ export default function GapPage() {
           )}
 
           {/* 강조할 강점 */}
-          {gap.strengths_to_highlight.length > 0 && (
+          {(gap.strengths_to_highlight?.length ?? 0) > 0 && (
             <div className="space-y-2">
               <div className="text-xs tracking-wider text-[var(--muted)] uppercase">강조할 강점</div>
               <div className="flex flex-wrap gap-2">
@@ -270,7 +270,7 @@ export default function GapPage() {
           )}
 
           {/* Matched */}
-          {gap.matched.length > 0 && (
+          {(gap.matched?.length ?? 0) > 0 && (
             <div className="space-y-2">
               <div className="text-xs tracking-wider text-[var(--muted)] uppercase">매칭됨 ({gap.matched.length})</div>
               <div className="space-y-2">
@@ -285,7 +285,7 @@ export default function GapPage() {
           )}
 
           {/* Partial */}
-          {gap.partial.length > 0 && (
+          {(gap.partial?.length ?? 0) > 0 && (
             <div className="space-y-2">
               <div className="text-xs tracking-wider text-[var(--muted)] uppercase">보강 필요 ({gap.partial.length})</div>
               <div className="space-y-2">
@@ -301,7 +301,7 @@ export default function GapPage() {
           )}
 
           {/* Missing */}
-          {gap.missing.length > 0 && (
+          {(gap.missing?.length ?? 0) > 0 && (
             <div className="space-y-2">
               <div className="text-xs tracking-wider text-[var(--muted)] uppercase">없는 항목 ({gap.missing.length})</div>
               <div className="space-y-2">
@@ -319,7 +319,7 @@ export default function GapPage() {
           )}
 
           {/* 키워드 갭 */}
-          {gap.keyword_gaps.length > 0 && (
+          {(gap.keyword_gaps?.length ?? 0) > 0 && (
             <div className="space-y-2">
               <div className="text-xs tracking-wider text-[var(--muted)] uppercase">누락 키워드 (ATS)</div>
               <div className="flex flex-wrap gap-2">
