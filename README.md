@@ -43,7 +43,9 @@
 | **다중 페르소나 병렬 검토** | 취업사이다 / 면접왕 이형 / 강민혁 페르소나가 동시에 초안 채점·약점 진단 |
 | **자료 보강 코치** | 시각자료·전문 용어·정량 수치·데모 링크가 빠지면 페르소나가 지적 |
 | **자동 합성** | 충돌하는 의견은 사용자의 [핵심 캐릭터]에 맞춰 선택, 한 사람의 글처럼 합성 |
+| **JD 매칭 갭 분석** | 채용 공고 붙여넣기 → 요건 추출 → 내 경험과 매칭도 분석 → 경력기술서 자동 생성 |
 | **고정 프로필** | PDF 이력서 또는 자유텍스트로 한 번 등록 → 자소서마다 자동 사용 |
+| **사용자 작성 지침 통합** | LLM 개발자 전환 전략·핵심 캐릭터·금지 표현·문장 정제 도구가 모든 생성에 자동 적용 |
 | **STAR 자동 추출** | Claude가 자유 텍스트·PDF에서 경험을 Situation/Task/Action/Result 구조로 분리 |
 | **기업 자동 분석** | Tavily 검색으로 최신 사업 전략 · 직무 역할 · 인재상 자동 수집 |
 | **방법론 RAG** | 168개 컨설팅 영상 청크에서 항목·페르소나별 유사 사례 검색 |
@@ -59,13 +61,14 @@
 │   /          랜딩 / 진입점 4개                                │
 │   /write     새 자소서: 입력 폼 → 초안 생성                    │
 │   /review    초안 검토: 병렬 피드백 + 통합 합성 (핵심 화면)     │
+│   /gap       JD 매칭: 요건 추출 → 갭 분석 → 경력기술서 생성    │
 │   /profile   고정 프로필 + STAR 경험 CRUD + PDF import       │
 │   /history   회사·항목별 자소서 버전 히스토리                  │
 └──────────────────────────────────────────────────────────────┘
                               │ HTTP (NEXT_PUBLIC_API_URL)
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ FastAPI Backend (23 routes)                                  │
+│ FastAPI Backend (27 routes)                                  │
 │                                                              │
 │ ▸ /api/profile, /api/experiences  사용자 프로필·경험 CRUD     │
 │ ▸ /api/profile/import             PDF/text → Claude → STAR  │
@@ -76,6 +79,10 @@
 │ ▸ /api/generate/synthesize        피드백 합성 → 최종안        │
 │ ▸ /api/generate/interview         자소서 기반 예상 면접 질문   │
 │ ▸ /api/history/letters            저장된 자소서 + 버전 체인   │
+│ ▸ /api/analyze/gap                JD 갭 분석 (3단계 파이프라인)│
+│ ▸ /api/analyze/gap/extract-jd     JD → 요건 JSON 추출       │
+│ ▸ /api/analyze/gap/analyze        요건 vs 경험 갭 분석        │
+│ ▸ /api/analyze/gap/career-description 갭 → 경력기술서 생성   │
 └──────────────────────────────────────────────────────────────┘
                               │
        ┌──────────────────────┼──────────────────────┐
@@ -317,6 +324,22 @@ multipart form: `file` (PDF 선택) + `text` (자유텍스트). Claude가 다음
 
 응답: `final_text`, `applied_changes[]`, `enrichment_todo[]`, `synthesis_summary`.
 
+### `POST /api/analyze/gap` — JD 갭 분석 + 경력기술서 (3단계 통합)
+
+```json
+{
+  "jd": "채용 공고 전문...",
+  "user_experience": "내 경험 자유텍스트 (선택 — 저장된 프로필 자동 반영)"
+}
+```
+
+응답:
+- `jd_requirements` — 직무명, 필수/우대 기술, 경력 요건, ATS 키워드
+- `gap_analysis` — 매칭 점수(0~100), matched/partial/missing 항목, critical_gaps
+- `career_description` — 프로젝트별 경력 (배경→역할→실행→성과), [수치 확인 필요] 플레이스홀더, 보유 역량
+
+단계별 실행이 필요하면 `/api/analyze/gap/extract-jd` → `/api/analyze/gap/analyze` → `/api/analyze/gap/career-description` 순으로 개별 호출 가능.
+
 ---
 
 ## 프로젝트 구조
@@ -324,30 +347,36 @@ multipart form: `file` (PDF 선택) + `text` (자유텍스트). Claude가 다음
 ```
 jasoseo-copilot/
 ├── backend/
-│   ├── main.py                       # FastAPI 앱 (23 routes)
+│   ├── main.py                       # FastAPI 앱 (27 routes)
 │   ├── config.py                     # 환경 변수
 │   ├── routers/
 │   │   ├── profile.py                # 프로필·경험·PDF import
 │   │   ├── personas.py               # GET /api/personas
 │   │   ├── research.py               # Tavily 기업 분석
 │   │   ├── generate.py               # 생성·피드백·합성·면접
-│   │   └── history.py                # 자소서 히스토리
-│   └── modules/
-│       ├── cover_letter_generator.py # 초안 생성·단일 피드백·면접 질문
-│       ├── multi_persona.py          # 병렬 피드백 + 합성기
-│       ├── persona_registry.py       # 페르소나별 시스템 프롬프트
-│       ├── methodology_rag.py        # pgvector 필터 검색
-│       ├── embedding.py              # fastembed 로컬 임베딩
-│       ├── user_profile.py           # 프로필·경험 CRUD
-│       ├── cover_letter_store.py     # 히스토리 저장·버전 체인
-│       ├── profile_importer.py       # PDF/text → Claude STAR 추출
-│       ├── channel_registry.py       # 파일 헤더 → 페르소나 매핑
-│       └── web_searcher.py           # Tavily wrapper
+│   │   ├── history.py                # 자소서 히스토리
+│   │   └── analyze.py                # JD 갭 분석 (3단계)
+│   ├── modules/
+│   │   ├── cover_letter_generator.py # 초안 생성·단일 피드백·면접 질문
+│   │   ├── multi_persona.py          # 병렬 피드백 + 합성기
+│   │   ├── gap_analyzer.py           # JD 요건 추출·갭 분석·경력기술서 생성
+│   │   ├── writing_guide.py          # 사용자 작성 지침 로더 (lru_cache)
+│   │   ├── persona_registry.py       # 페르소나별 시스템 프롬프트
+│   │   ├── methodology_rag.py        # pgvector 필터 검색
+│   │   ├── embedding.py              # fastembed 로컬 임베딩
+│   │   ├── user_profile.py           # 프로필·경험 CRUD
+│   │   ├── cover_letter_store.py     # 히스토리 저장·버전 체인
+│   │   ├── profile_importer.py       # PDF/text → Claude STAR 추출
+│   │   ├── channel_registry.py       # 파일 헤더 → 페르소나 매핑
+│   │   └── web_searcher.py           # Tavily wrapper
+│   └── prompts/
+│       └── user_profile.txt          # 사용자 고정 작성 지침 (15개 원칙)
 ├── frontend/
 │   ├── app/
 │   │   ├── page.tsx                  # 랜딩
 │   │   ├── write/page.tsx            # 새 자소서 작성
 │   │   ├── review/page.tsx           # 핵심: 병렬 피드백 + 합성
+│   │   ├── gap/page.tsx              # JD 매칭: 갭 분석 + 경력기술서
 │   │   ├── profile/page.tsx          # 프로필 + STAR 편집기
 │   │   └── history/page.tsx          # 자소서 히스토리
 │   ├── components/
@@ -379,6 +408,22 @@ jasoseo-copilot/
 | @careersaida | 50 | 108 | `careersaida_star` |
 | @leebro_interview | 30 | 60 | `leehyung_3C4P` |
 | **합계** | **80** | **168** | |
+
+---
+
+## 사용자 고정 작성 지침 (`backend/prompts/user_profile.txt`)
+
+모든 자소서 생성·피드백·합성·경력기술서 생성에 자동으로 prepend되는 개인화 지침.
+
+| 항목 | 내용 |
+|------|------|
+| **핵심 캐릭터** | "복잡한 문제를 구조화하고, 모델과 시스템으로 끝까지 연결하는 LLM 개발자" |
+| **서술 순서** | 문제 정의 → 내 판단 → 접근 방식 → 결과/영향 → 직무 연결 |
+| **직무 전환 프레이밍** | 데이터분석 경력 → "LLM 평가/실험 설계 역량"으로 재정의 |
+| **금지 표현** | 근거 없는 "주도/기여/혁신", AI 반복 리듬, 보고서체 |
+| **문장 정제 도구** | 패턴 해체 / 주체 강화 / 추상어 실체화 / 리듬 설계 / 진정성 검증 / ATS+AI 동시 점검 |
+
+`user_profile.txt`를 직접 편집해 지침을 업데이트하면 서버 재시작 없이 다음 요청부터 반영됩니다 (lru_cache 초기화 필요 시 재시작).
 
 ---
 
