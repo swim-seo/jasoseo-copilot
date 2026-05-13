@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     SUPABASE_KEY: str
     HUGGINGFACE_API_KEY: str = ""
     CLAUDE_MODEL: str = "claude-sonnet-4-6"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     model_config = {"env_file": ".env"}
 
